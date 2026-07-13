@@ -110,7 +110,7 @@ const AUTHORIZE_URL  = "https://apis.roblox.com/oauth/v1/authorize";
 const TOKEN_URL      = "https://apis.roblox.com/oauth/v1/token";
 const USERINFO_URL   = "https://apis.roblox.com/oauth/v1/userinfo";
 const SCOPE          = "openid profile";
-const HOME_PAGE      = "home.html";
+// (no HOME_PAGE — login completes on THIS page, no second page)
 
 const btn    = document.getElementById("robloxBtn");
 const status = document.getElementById("status");
@@ -227,15 +227,70 @@ async function handleCallback(){
     localStorage.setItem("roblox_user", JSON.stringify({
       sub: user.sub, name: user.name, preferred_username: user.preferred_username, profile: user.profile
     }));
-    showOk("Signed in as " + (user.name || user.preferred_username || "Roblox user") + " — loading…");
-    setTimeout(() => location.replace(HOME_PAGE), 800);
+    showLoggedIn(user);  // stay on THIS page — no redirect anywhere
   } catch (e) {
     showError("Network error talking to Roblox: " + (e.message || e));
     history.replaceState(null, "", location.pathname);
   }
 }
 
-handleCallback();
+// --- show the signed-in screen (replaces the login card in place) -----------
+function showLoggedIn(user){
+  const card   = document.querySelector(".card");
+  const name   = user.name || user.preferred_username || "Roblox user";
+  const handle = user.preferred_username ? ("@" + user.preferred_username) : "";
+  const avatar = user.profile
+    ? '<img src="' + user.profile + '" alt="avatar" class="avatar" referrerpolicy="no-referrer">'
+    : '<div class="avatar avatar-fallback">' + (name.charAt(0)||"R").toUpperCase() + '</div>';
+  card.innerHTML =
+    '<div class="shine" aria-hidden="true"></div>' +
+    '<div class="logo"><div class="avatar-wrap">' + avatar +
+      '<svg class="badge" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#1a1a1f"/><path d="M16.5 7.5l-6 6-3-3" stroke="#5ae08a" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+    '</div></div>' +
+    '<h1>Welcome, ' + (user.name || handle || "friend") + '!</h1>' +
+    '<p class="sub">' + (handle ? handle + '<br>' : '') + 'You are signed in with Roblox.</p>' +
+    '<button id="continueBtn" class="btn" type="button">✓ Continue to Copygames</button>' +
+    '<div class="divider">signed in</div>' +
+    '<div class="status ok" id="status" role="status">✅ Signed in successfully.</div>' +
+    '<div class="foot"><button id="signoutBtn" class="linkbtn">Sign out</button></div>' +
+    '<p class="legal">Your session is remembered on this device. Secure sign-in via Roblox (PKCE).</p>';
+  // wire up the buttons
+  const contBtn = document.getElementById("continueBtn");
+  if (contBtn) contBtn.addEventListener("click", () => {
+    contBtn.textContent = "Loading…"; contBtn.disabled = true;
+    // stay here — this page IS the app now. (scroll to top / reset)
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => { contBtn.textContent = "✓ You're all set"; }, 600);
+  });
+  const outBtn = document.getElementById("signoutBtn");
+  if (outBtn) outBtn.addEventListener("click", () => {
+    localStorage.removeItem("roblox_user");
+    location.reload();
+  });
+}
+
+// --- on load: if already signed in, show the welcome screen right away -------
+(function init(){
+  try {
+    const u = JSON.parse(localStorage.getItem("roblox_user") || "null");
+    if (u && (u.name || u.preferred_username || u.sub)) { showLoggedIn(u); return; }
+  } catch (_) {}
+  handleCallback();  // fresh visit OR returning from Roblox with ?code=
+})();
+
+// small inline styles for the signed-in view
+(function inject(){
+  const st = document.createElement("style");
+  st.textContent =
+    '.avatar-wrap{position:relative;width:104px;height:104px;margin:0 auto}' +
+    '.avatar{width:104px;height:104px;border-radius:22px;object-fit:cover;display:block;border:1px solid rgba(255,255,255,.18);box-shadow:0 10px 30px rgba(0,0,0,.5)}' +
+    '.avatar-fallback{display:grid;place-items:center;font-family:"Pixelify Sans",cursive;font-size:42px;color:#fff;background:radial-gradient(120% 120% at 30% 20%,#16161f,#0c0c12)}' +
+    '.badge{position:absolute;right:-6px;bottom:-6px;width:34px;height:34px}' +
+    '.linkbtn{background:none;border:1px solid var(--border);color:var(--muted);padding:7px 13px;border-radius:10px;font-size:12.5px;cursor:pointer;transition:.2s;font-family:inherit}' +
+    '.linkbtn:hover{color:var(--fg);border-color:var(--border-strong);background:rgba(255,255,255,.03)}';
+  document.head.appendChild(st);
+})();
+
 </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1a86a528fdda9a2',t:'MTc4Mzk0NzA0Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1a874c4acded7a9',t:'MTc4Mzk0NzQ3NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
